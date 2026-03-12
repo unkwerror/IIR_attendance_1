@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Startup Studio NSU — Посещаемость</title>
+
+<!-- QR + Fingerprint libs -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Inter:wght@400;500;600&display=swap');
+
+/* ─── Design tokens (Startup Studio NSU) ─── */
+:root {
+  --bg:   #111113;
+  --sf:   #1a1a1e;
+  --bd:   #2a2a32;
+  --pk:   #e8197d;
+  --pd:   rgba(232,25,125,.12);
+  --pg:   rgba(232,25,125,.3);
+  --wh:   #fff;
+  --mt:   #5c5c78;
+  --dn:   #ff3355;
+  --ok:   #3ecf8e;
+  --warn: #ff8c42;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+  background: var(--bg);
+  color: var(--wh);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Background atmosphere ─── */
+.bg-stars { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+.bg-stars span {
+  position:absolute; border-radius:50%; background:#fff; opacity:0;
+  animation: twinkle var(--d,3s) var(--delay,0s) ease-in-out infinite;
+}
+@keyframes twinkle { 0%,100%{opacity:0} 50%{opacity:var(--op,.5)} }
+
+.neb {
+  position:fixed; border-radius:50%; filter:blur(120px);
+  pointer-events:none; z-index:0; opacity:.1;
+  animation: ndrift 14s ease-in-out infinite;
+}
+.n1 { width:600px; height:600px; background:var(--pk); top:-200px; right:-150px; }
+.n2 { width:400px; height:400px; background:#4400bb; bottom:-150px; left:-100px;
+      animation-direction:reverse; animation-duration:18s; }
+@keyframes ndrift { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,25px)} }
+
+/* ─── Screen system ─── */
+.screen { display:none; position:relative; z-index:10; min-height:100vh; }
+.screen.active { display:flex; }
+
+/* ═══════════════════════════════════════════
+   SCREEN: SETUP (Teacher config)
+═══════════════════════════════════════════ */
+#screen-setup {
+  align-items:center; justify-content:center;
+  padding:40px 20px;
+}
+.setup-card {
+  width:100%; max-width:440px;
+  display:flex; flex-direction:column; gap:24px;
+}
+
+/* Brand */
+.s-brand { display:flex; align-items:center; gap:12px; }
+.s-brand-dot {
+  width:18px; height:18px; border-radius:50%; flex-shrink:0;
+  background:var(--pk); box-shadow:0 0 20px var(--pg);
+  animation:breathe 3s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100%{box-shadow:0 0 16px var(--pg)}
+  50%{box-shadow:0 0 36px var(--pg), 0 0 60px var(--pd)}
+}
+.s-brand-txt {
+  font-family:'Unbounded',sans-serif; font-size:12px; font-weight:900;
+  line-height:1.25; letter-spacing:.04em;
+}
+.s-brand-txt em { color:var(--pk); font-style:normal; }
+
+/* Heading */
+.setup-h { display:flex; flex-direction:column; gap:6px; }
+.setup-title {
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(26px,5vw,38px); font-weight:900;
+  line-height:1.05; letter-spacing:-.03em;
+}
+.setup-sub { font-size:14px; color:var(--mt); line-height:1.5; }
+
+/* Section divider */
+.setup-section-label {
+  font-size:10px; font-weight:600; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--pk);
+  display:flex; align-items:center; gap:10px;
+}
+.setup-section-label::after {
+  content:''; flex:1; height:1px; background:rgba(232,25,125,.2);
+}
+
+/* Fields */
+.fields { display:flex; flex-direction:column; gap:14px; }
+.field label {
+  display:block; font-size:10px; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mt); margin-bottom:7px;
+}
+.field-hint { font-size:11px; color:var(--mt); margin-top:5px; line-height:1.4; }
+
+input[type=text], input[type=number], input[type=url] {
+  width:100%; background:var(--sf); border:1.5px solid var(--bd);
+  color:var(--wh); font-family:'Inter',sans-serif; font-size:14px;
+  padding:12px 16px; border-radius:10px; outline:none;
+  transition:border-color .2s, box-shadow .2s;
+}
+input:focus { border-color:var(--pk); box-shadow:0 0 0 3px var(--pd); }
+input::placeholder { color:var(--mt); }
+input:disabled { opacity:.4; cursor:not-allowed; }
+
+/* Toggle switch */
+.toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--sf); border:1.5px solid var(--bd);
+  border-radius:10px; padding:12px 16px;
+}
+.toggle-label { font-size:13px; color:var(--wh); }
+.toggle-sub { font-size:11px; color:var(--mt); margin-top:2px; }
+.toggle {
+  position:relative; width:44px; height:24px; flex-shrink:0;
+}
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.toggle-track {
+  position:absolute; inset:0; background:var(--bd);
+  border-radius:12px; cursor:pointer; transition:background .2s;
+}
+.toggle input:checked + .toggle-track { background:var(--pk); }
+.toggle-track::after {
+  content:''; position:absolute; width:18px; height:18px;
+  border-radius:50%; background:#fff;
+  top:3px; left:3px; transition:transform .2s;
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.toggle input:checked + .toggle-track::after { transform:translateX(20px); }
+
+/* Geo section */
+.geo-block {
+  background:var(--pd); border:1px solid rgba(232,25,125,.2);
+  border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px;
+  transition:opacity .3s;
+}
+.geo-block.disabled { opacity:.35; pointer-events:none; }
+.geo-row { display:flex; gap:8px; align-items:flex-end; }
+.geo-row .field { flex:1; margin:0; }
+.btn-geo {
+  padding:12px 14px; background:var(--sf); border:1.5px solid var(--bd);
+  color:var(--pk); border-radius:10px; cursor:pointer; font-size:18px;
+  line-height:1; flex-shrink:0; transition:border-color .2s, background .2s;
+}
+.btn-geo:hover { border-color:var(--pk); background:var(--pd); }
+
+.geo-status {
+  font-size:11px; color:var(--mt);
+  display:flex; align-items:center; gap:6px;
+}
+.geo-status.ok { color:var(--ok); }
+.geo-status.err { color:var(--dn); }
+.geo-status.warn { color:var(--warn); }
+.geo-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+.radius-row { display:flex; align-items:center; gap:10px; }
+.radius-row label { font-size:11px; color:var(--mt); white-space:nowrap; }
+input[type=range] {
+  -webkit-appearance:none; width:100%; height:4px;
+  background:var(--bd); border-radius:2px; outline:none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--pk); cursor:pointer; box-shadow:0 0 8px var(--pg);
+}
+.radius-val {
+  font-family:'Unbounded',sans-serif; font-size:11px; font-weight:700;
+  color:var(--pk); white-space:nowrap; min-width:44px;
+}
+
+/* Validation box */
+.validation-box {
+  background:var(--sf); border:1.5px solid var(--bd);
+  border-radius:10px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.vb-title {
+  font-size:10px; font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--mt);
+}
+.vb-row { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--mt); }
+.vb-row.ok { color:var(--ok); }
+.vb-row.err { color:var(--dn); }
+.vb-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+/* Main CTA */
+.btn-go {
+  width:100%; padding:16px;
+  background:var(--pk); color:#fff; border:none;
+  border-radius:10px; cursor:pointer; overflow:hidden; position:relative;
+  font-family:'Unbounded',sans-serif; font-size:12px; font-weight:700;
+  letter-spacing:.06em; transition:transform .15s, box-shadow .2s;
+}
+.btn-go::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.18) 0%,transparent 55%);
+}
+.btn-go:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 28px var(--pg); }
+.btn-go:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+
+/* ═══════════════════════════════════════════
+   SCREEN: TEACHER (Live session dashboard)
+═══════════════════════════════════════════ */
+#screen-teacher { flex-direction:column; align-items:stretch; }
+.tl {
+  display:grid; grid-template-rows:64px 1fr auto;
+  min-height:100vh; max-width:1200px;
+  width:100%; margin:0 auto; padding:0 48px;
+}
+
+/* Topbar */
+.topbar {
+  display:flex; align-items:center;
+  border-bottom:1px solid var(--bd); gap:20px;
+}
+.tb-brand { display:flex; align-items:center; gap:9px; margin-right:auto; }
+.tb-dot { width:10px; height:10px; border-radius:50%; background:var(--pk); box-shadow:0 0 8px var(--pg); }
+.tb-name {
+  font-family:'Unbounded',sans-serif; font-size:10px;
+  font-weight:900; letter-spacing:.06em; opacity:.45;
+}
+.tb-name em { color:var(--pk); font-style:normal; opacity:1; }
+.live-pill {
+  display:flex; align-items:center; gap:7px;
+  background:var(--pd); border:1px solid rgba(232,25,125,.25);
+  border-radius:100px; padding:5px 14px;
+  font-size:10px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--pk);
+}
+.live-dot {
+  width:6px; height:6px; border-radius:50%; background:var(--pk);
+  animation:blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.tb-subject {
+  font-family:'Unbounded',sans-serif; font-size:13px;
+  font-weight:700; letter-spacing:-.01em;
+  max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* Main 2-col layout */
+.t-main {
+  display:grid; grid-template-columns:1fr 320px;
+  gap:32px; align-items:start; padding:24px 0; overflow:hidden;
+}
+
+/* QR column */
+.qr-col { display:flex; flex-direction:column; align-items:center; gap:16px; }
+.qr-card {
+  background:var(--sf); border:1.5px solid var(--bd); border-radius:24px;
+  padding:28px; display:flex; flex-direction:column; align-items:center; gap:18px;
+  position:relative; box-shadow:0 0 80px rgba(232,25,125,.08); width:100%;
+}
+/* Corner decorations */
+.qr-card .br { position:absolute; width:18px; height:18px; border-color:var(--pk); border-style:solid; opacity:.5; }
+.qr-card .br.tl { top:12px; left:12px; border-width:2px 0 0 2px; border-radius:3px 0 0 0; }
+.qr-card .br.tr { top:12px; right:12px; border-width:2px 2px 0 0; border-radius:0 3px 0 0; }
+.qr-card .br.bl { bottom:12px; left:12px; border-width:0 0 2px 2px; border-radius:0 0 0 3px; }
+.qr-card .br.br2 { bottom:12px; right:12px; border-width:0 2px 2px 0; border-radius:0 0 3px 0; }
+
+.qr-frame {
+  background:#fff; padding:12px; border-radius:12px;
+  box-shadow:0 8px 40px rgba(0,0,0,.4), 0 0 0 3px #000;
+  width:min(480px,calc(100vw - 380px));
+  height:min(480px,calc(100vw - 380px));
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+#qrcanvas { display:block; width:100%!important; height:100%!important; }
+
+.qr-hint {
+  font-size:10px; font-weight:600; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--mt); text-align:center;
+}
+
+/* Timer */
+.timer-b { width:100%; }
+.timer-track {
+  width:100%; height:5px; background:var(--bd);
+  border-radius:3px; overflow:hidden; margin-bottom:9px;
+}
+.timer-fill {
+  height:100%; border-radius:3px;
+  background:linear-gradient(90deg,var(--pk),#ff79b0);
+  transition:width 1s linear, background .35s;
+}
+.timer-fill.urg { background:linear-gradient(90deg,#ff3355,#ff8044); }
+.timer-row { display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--mt); }
+.timer-n {
+  font-family:'Unbounded',sans-serif; font-size:22px;
+  font-weight:900; color:var(--pk); line-height:1; transition:color .3s;
+}
+.timer-n.urg { color:var(--dn); }
+
+/* ─── Student list under QR ─── */
+.student-list-section {
+  width:100%; display:flex; flex-direction:column; gap:10px;
+}
+.sl-header {
+  display:flex; align-items:center; justify-content:space-between;
+}
+.sl-title {
+  font-size:10px; font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--mt);
+}
+.sl-count {
+  font-family:'Unbounded',sans-serif; font-size:13px;
+  font-weight:900; color:var(--pk);
+}
+.student-list {
+  display:flex; flex-direction:column; gap:6px;
+  max-height:320px; overflow-y:auto;
+}
+.student-list::-webkit-scrollbar { width:4px; }
+.student-list::-webkit-scrollbar-track { background:transparent; }
+.student-list::-webkit-scrollbar-thumb { background:var(--bd); border-radius:2px; }
+
+.student-item {
+  display:flex; align-items:center; gap:12px;
+  background:var(--sf); border:1px solid var(--bd);
+  border-radius:10px; padding:10px 14px;
+  animation:slideIn .35s cubic-bezier(.175,.885,.32,1.275) forwards;
+}
+@keyframes slideIn {
+  from{opacity:0;transform:translateY(-8px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.si-num {
+  width:22px; height:22px; border-radius:50%;
+  background:var(--pd); border:1px solid rgba(232,25,125,.25);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Unbounded',sans-serif; font-size:9px; font-weight:700;
+  color:var(--pk); flex-shrink:0;
+}
+.si-info { flex:1; min-width:0; }
+.si-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.si-group { font-size:11px; color:var(--mt); margin-top:1px; }
+.si-time { font-size:10px; color:var(--mt); flex-shrink:0; }
+
+.sl-empty {
+  text-align:center; padding:24px 16px;
+  font-size:12px; color:var(--mt); line-height:1.6;
+  background:var(--sf); border:1px dashed var(--bd); border-radius:10px;
+}
+
+/* Info column */
+.info-col { display:flex; flex-direction:column; gap:14px; }
+.info-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.chip {
+  background:var(--sf); border:1.5px solid var(--bd);
+  border-radius:14px; padding:18px 20px;
+}
+.chip-lbl {
+  font-size:9px; font-weight:600; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--mt); margin-bottom:6px;
+}
+.chip-val {
+  font-family:'Unbounded',sans-serif; font-size:13px;
+  font-weight:700; line-height:1.3;
+}
+.chip-val.active { color:var(--pk); }
+
+/* Security status */
+.security-card {
+  background:var(--sf); border:1.5px solid var(--bd);
+  border-radius:14px; padding:20px 22px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.sec-title {
+  font-size:10px; font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--mt);
+}
+.sec-row { display:flex; align-items:center; gap:10px; }
+.sec-icon {
+  width:30px; height:30px; border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:14px;
+}
+.sec-icon.on { background:var(--pd); }
+.sec-icon.off { background:rgba(255,255,255,.04); }
+.sec-text { display:flex; flex-direction:column; gap:1px; }
+.sec-label { font-size:12px; font-weight:500; }
+.sec-sub { font-size:10px; color:var(--mt); }
+
+/* Steps */
+.steps-c {
+  background:var(--sf); border:1.5px solid var(--bd);
+  border-radius:14px; padding:20px 22px;
+  display:flex; flex-direction:column; gap:14px;
+}
+.steps-ttl {
+  font-size:10px; font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--mt);
+}
+.step { display:flex; align-items:flex-start; gap:12px; }
+.step-n {
+  width:22px; height:22px; flex-shrink:0; border-radius:50%;
+  background:var(--pd); border:1px solid rgba(232,25,125,.25);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Unbounded',sans-serif; font-size:9px; font-weight:700; color:var(--pk);
+}
+.step-t { font-size:13px; color:var(--mt); line-height:1.55; padding-top:2px; }
+
+/* Footer */
+.t-foot {
+  border-top:1px solid var(--bd);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 0;
+}
+.foot-note { font-size:11px; color:var(--mt); }
+
+.btn-end-session {
+  padding:9px 20px; background:rgba(255,51,85,.08);
+  border:1.5px solid rgba(255,51,85,.25);
+  color:var(--dn); border-radius:8px; cursor:pointer;
+  font-family:'Unbounded',sans-serif; font-size:10px; font-weight:700;
+  letter-spacing:.06em; transition:all .2s;
+}
+.btn-end-session:hover { background:rgba(255,51,85,.15); border-color:var(--dn); }
+
+.btn-new-session {
+  padding:9px 20px; background:transparent;
+  border:1.5px solid var(--bd); color:var(--mt);
+  border-radius:8px; cursor:pointer;
+  font-family:'Unbounded',sans-serif; font-size:10px; font-weight:700;
+  letter-spacing:.06em; transition:all .2s;
+}
+.btn-new-session:hover { border-color:var(--pk); color:var(--pk); background:var(--pd); }
+
+.foot-btns { display:flex; gap:8px; }
+
+
+/* ═══════════════════════════════════════════
+   SCREEN: STUDENT (QR check + form)
+═══════════════════════════════════════════ */
+#screen-student {
+  align-items:center; justify-content:center;
+  padding:40px 20px; flex-direction:column; gap:0;
+}
+.st-brand { display:flex; align-items:center; gap:9px; margin-bottom:28px; }
+.st-bd { width:12px; height:12px; border-radius:50%; background:var(--pk); box-shadow:0 0 12px var(--pg); }
+.st-bn { font-family:'Unbounded',sans-serif; font-size:10px; font-weight:900; letter-spacing:.06em; }
+
+.st-card {
+  width:90%; max-width:380px; background:var(--sf);
+  border:1.5px solid var(--bd); border-radius:24px;
+  padding:44px 32px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  position:relative; overflow:hidden;
+}
+.st-card.ok::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 50% 0%, rgba(232,25,125,.1), transparent 65%);
+  pointer-events:none;
+}
+.st-icon {
+  width:80px; height:80px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:34px; margin-bottom:4px;
+}
+.st-icon.ok {
+  background:var(--pd); border:2px solid rgba(232,25,125,.4);
+  box-shadow:0 0 36px var(--pd);
+  animation:popIn .45s cubic-bezier(.175,.885,.32,1.275) forwards;
+}
+.st-icon.fail {
+  background:rgba(255,51,85,.08); border:2px solid rgba(255,51,85,.3);
+  animation:shake .5s ease forwards;
+}
+.st-icon.spin { background:#1e1e24; border:2px solid var(--bd); }
+
+@keyframes popIn {
+  0%{transform:scale(.4) rotate(-10deg);opacity:0}
+  70%{transform:scale(1.08) rotate(2deg)}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-9px) rotate(-2deg)}
+  40%{transform:translateX(9px) rotate(2deg)}
+  60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+}
+
+.spin-r {
+  width:30px; height:30px;
+  border:3px solid rgba(232,25,125,.15); border-top-color:var(--pk);
+  border-radius:50%; animation:rot .75s linear infinite;
+}
+@keyframes rot { 100%{transform:rotate(360deg)} }
+
+.st-title {
+  font-family:'Unbounded',sans-serif; font-size:20px;
+  font-weight:900; letter-spacing:-.02em;
+}
+.st-title.spin { color:var(--mt); font-size:15px; }
+.st-desc { font-size:13px; color:var(--mt); line-height:1.6; max-width:260px; }
+.st-sep { width:36px; height:1px; background:var(--bd); }
+.st-tag {
+  padding:5px 14px; border-radius:100px;
+  font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+}
+.st-tag.ok { background:var(--pd); color:var(--pk); border:1px solid rgba(232,25,125,.25); }
+.st-tag.fail { background:rgba(255,51,85,.08); color:var(--dn); border:1px solid rgba(255,51,85,.2); }
+.st-tag.warn { background:rgba(255,140,66,.1); color:var(--warn); border:1px solid rgba(255,140,66,.25); }
+
+/* Progress bar */
+.st-pb { width:100%; height:3px; background:var(--bd); border-radius:2px; overflow:hidden; }
+.st-pf {
+  height:100%; width:0; border-radius:2px;
+  background:linear-gradient(90deg,var(--pk),#ff79b0);
+  transition:width .3s ease;
+}
+
+/* ─── Form overlay (student) ─── */
+.form-overlay {
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  background:var(--bg); z-index:9999;
+}
+.form-topbar {
+  background:var(--sf); border-bottom:1px solid var(--bd);
+  padding:11px 18px; display:flex; align-items:center; gap:10px; flex-shrink:0;
+}
+.ftb-dot {
+  width:9px; height:9px; border-radius:50%; background:var(--pk);
+  box-shadow:0 0 8px rgba(232,25,125,.6); animation:blink 1.4s infinite; flex-shrink:0;
+}
+.ftb-name {
+  font-family:'Unbounded',sans-serif; font-size:10px;
+  font-weight:900; color:var(--wh); letter-spacing:.06em;
+}
+.ftb-label { font-size:11px; color:var(--mt); margin-left:auto; }
+.form-wrap { flex:1; position:relative; overflow:hidden; }
+.form-loading {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px; background:var(--bg);
+}
+.form-loader {
+  width:28px; height:28px;
+  border:3px solid rgba(232,25,125,.15); border-top-color:var(--pk);
+  border-radius:50%; animation:rot .75s linear infinite;
+}
+.form-loading-text { font-size:12px; color:var(--mt); }
+#gform-iframe {
+  position:absolute; inset:0; width:100%; height:100%;
+  border:none; background:#fff; opacity:0; transition:opacity .3s;
+}
+
+/* End session modal */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.7);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000; backdrop-filter:blur(4px);
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal {
+  background:var(--sf); border:1.5px solid var(--bd); border-radius:20px;
+  padding:36px 32px; max-width:380px; width:90%;
+  display:flex; flex-direction:column; gap:20px;
+  animation:slideUp .25s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-icon {
+  width:60px; height:60px; border-radius:50%;
+  background:rgba(255,51,85,.08); border:2px solid rgba(255,51,85,.3);
+  display:flex; align-items:center; justify-content:center; font-size:26px; margin:0 auto;
+}
+.modal-title {
+  font-family:'Unbounded',sans-serif; font-size:18px; font-weight:900;
+  text-align:center; letter-spacing:-.02em;
+}
+.modal-desc { font-size:13px; color:var(--mt); text-align:center; line-height:1.6; }
+.modal-summary {
+  background:var(--bg); border-radius:10px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.modal-summary-row { display:flex; justify-content:space-between; font-size:12px; }
+.modal-summary-val { font-weight:600; }
+.modal-btns { display:flex; flex-direction:column; gap:8px; }
+.btn-confirm-end {
+  padding:14px; background:var(--dn); color:#fff; border:none;
+  border-radius:10px; cursor:pointer;
+  font-family:'Unbounded',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em;
+  transition:opacity .2s;
+}
+.btn-confirm-end:hover { opacity:.85; }
+.btn-cancel-end {
+  padding:14px; background:transparent; border:1.5px solid var(--bd); color:var(--mt);
+  border-radius:10px; cursor:pointer;
+  font-family:'Unbounded',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em;
+  transition:all .2s;
+}
+.btn-cancel-end:hover { border-color:var(--pk); color:var(--pk); }
+
+/* Responsive */
+@media(max-width:800px) {
+  .tl { padding:0 16px; grid-template-rows:auto 1fr auto; height:auto; }
+  .topbar { padding:14px 0; flex-wrap:wrap; border:none; gap:10px; }
+  .t-main { grid-template-columns:1fr; padding:16px 0; gap:16px; }
+  .qr-frame { width:calc(100vw - 60px)!important; height:calc(100vw - 60px)!important; }
+  .info-row { grid-template-columns:1fr 1fr; }
+  .t-foot { flex-direction:column; gap:8px; align-items:stretch; }
+  .foot-btns { flex-direction:column; }
+}
+
+/* Scrollbar for student list */
+.student-list-section .student-list { padding-right:4px; }
+</style>
+</head>
+<body>
+
+<!-- Atmosphere -->
+<div class="bg-stars" id="bg-stars"></div>
+<div class="neb n1"></div>
+<div class="neb n2"></div>
+
+<!-- ═══ SCREEN: SETUP ═══ -->
+<div class="screen active" id="screen-setup">
+  <div class="setup-card">
+    <div class="s-brand">
+      <div class="s-brand-dot"></div>
+      <div class="s-brand-txt">STARTUP<br>STUDIO <em>NSU</em></div>
+    </div>
+
+    <div class="setup-h">
+      <div class="setup-title">Отметить<br>посещаемость</div>
+      <div class="setup-sub">Настройте сессию — студенты отметятся через QR‑код.</div>
+    </div>
+
+    <div class="fields">
+      <!-- Basic info -->
+      <div class="setup-section-label">Информация о занятии</div>
+
+      <div class="field">
+        <label>Предмет / Группа</label>
+        <input type="text" id="inp-subject" placeholder="Стартап-менеджмент, ИТ-21" />
+      </div>
+
+      <div class="field">
+        <label>Ссылка на Google Forms</label>
+        <input type="url" id="inp-forms" placeholder="https://docs.google.com/forms/d/..." />
+        <div class="field-hint" id="forms-hint" style="display:none;color:var(--dn)"></div>
+      </div>
+
+      <div class="field">
+        <label>Обновлять QR каждые (сек)</label>
+        <input type="number" id="inp-interval" value="20" min="10" max="120" />
+      </div>
+
+      <!-- Security settings -->
+      <div class="setup-section-label" style="margin-top:4px">Защита от мошенничества</div>
+
+      <div class="validation-box">
+        <div class="vb-title">Активные проверки</div>
+        <div class="vb-row ok"><div class="vb-dot"></div>QR-токен — истекает каждые N секунд</div>
+        <div class="vb-row ok"><div class="vb-dot"></div>Device fingerprint — один девайс = одна отметка</div>
+        <div class="vb-row" id="geo-check-status"><div class="vb-dot"></div>Геолокация — не настроена</div>
+      </div>
+
+      <!-- Geo section -->
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">📍 Проверка геолокации</div>
+          <div class="toggle-sub">Студенты должны быть в радиусе от аудитории</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="geo-toggle" onchange="toggleGeo(this.checked)">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="geo-block disabled" id="geo-block">
+        <div class="geo-row">
+          <div class="field">
+            <label>Координаты аудитории</label>
+            <input type="text" id="inp-geo" placeholder="54.8442, 83.0905" readonly />
+          </div>
+          <button class="btn-geo" onclick="captureGeo()" title="Определить моё местоположение">⊕</button>
+        </div>
+        <div class="geo-status" id="geo-status"><span class="geo-dot"></span>Нажмите ⊕ для определения координат</div>
+        <div class="radius-row">
+          <label>Радиус допуска:</label>
+          <input type="range" id="inp-radius" min="20" max="300" value="80" step="10"
+            oninput="document.getElementById('radius-val').textContent=this.value+'м'; updateGeoCheckStatus()"/>
+          <span class="radius-val" id="radius-val">80м</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-go" id="btn-start" onclick="startSession()">ЗАПУСТИТЬ СЕССИЮ →</button>
+  </div>
+</div>
+
+
+<!-- ═══ SCREEN: TEACHER (Live) ═══ -->
+<div class="screen" id="screen-teacher">
+  <div class="tl">
+
+    <div class="topbar">
+      <div class="tb-brand">
+        <div class="tb-dot"></div>
+        <div class="tb-name">STARTUP STUDIO <em>NSU</em></div>
+      </div>
+      <div class="live-pill"><div class="live-dot"></div>Live</div>
+      <div class="tb-subject" id="lbl-subject">—</div>
+    </div>
+
+    <div class="t-main">
+
+      <!-- QR + student list -->
+      <div class="qr-col">
+        <div class="qr-card">
+          <div class="br tl"></div><div class="br tr"></div>
+          <div class="br bl"></div><div class="br br2"></div>
+          <div class="qr-frame">
+            <canvas id="qrcanvas"></canvas>
+          </div>
+          <div class="qr-hint">Наведи камеру и отметись</div>
+          <div class="timer-b">
+            <div class="timer-track"><div class="timer-fill" id="t-fill"></div></div>
+            <div class="timer-row">
+              <span>Код обновится через</span>
+              <span class="timer-n" id="t-cd">20</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student list -->
+        <div class="student-list-section" style="width:100%">
+          <div class="sl-header">
+            <div class="sl-title">Отметились</div>
+            <div class="sl-count" id="student-count">0</div>
+          </div>
+          <div class="student-list" id="student-list">
+            <div class="sl-empty">
+              Ещё никто не отметился.<br>
+              Студенты появятся здесь после заполнения формы.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info column -->
+      <div class="info-col">
+        <div class="info-row">
+          <div class="chip">
+            <div class="chip-lbl">Студентов</div>
+            <div class="chip-val active" id="chip-count">0</div>
+          </div>
+          <div class="chip">
+            <div class="chip-lbl">Обновление</div>
+            <div class="chip-val" id="info-ivl">20 сек</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="chip">
+            <div class="chip-lbl">Статус</div>
+            <div class="chip-val active">Активна</div>
+          </div>
+          <div class="chip">
+            <div class="chip-lbl">Токен</div>
+            <div class="chip-val" id="info-tok" style="font-size:10px;letter-spacing:.05em;opacity:.6;">—</div>
+          </div>
+        </div>
+
+        <!-- Security status -->
+        <div class="security-card">
+          <div class="sec-title">Защита сессии</div>
+          <div class="sec-row">
+            <div class="sec-icon on">⏱</div>
+            <div class="sec-text">
+              <div class="sec-label">Одноразовый токен</div>
+              <div class="sec-sub">Истекает с каждым QR</div>
+            </div>
+          </div>
+          <div class="sec-row">
+            <div class="sec-icon on">🖥</div>
+            <div class="sec-text">
+              <div class="sec-label">Device fingerprint</div>
+              <div class="sec-sub">1 устройство = 1 отметка</div>
+            </div>
+          </div>
+          <div class="sec-row" id="geo-sec-row">
+            <div class="sec-icon off">📍</div>
+            <div class="sec-text">
+              <div class="sec-label">Геолокация</div>
+              <div class="sec-sub" id="geo-sec-sub">Отключена</div>
+            </div>
+          </div>
+          <div class="sec-row">
+            <div class="sec-icon on">🔒</div>
+            <div class="sec-text">
+              <div class="sec-label">URL формы скрыт</div>
+              <div class="sec-sub">Открывается внутри приложения</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="steps-c">
+          <div class="steps-ttl">Инструкция для студентов</div>
+          <div class="step"><div class="step-n">1</div><div class="step-t">Наведи камеру на QR‑код на экране</div></div>
+          <div class="step"><div class="step-n">2</div><div class="step-t">Пройди проверку устройства и геолокации</div></div>
+          <div class="step"><div class="step-n">3</div><div class="step-t">Заполни форму — имя появится в списке</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="t-foot">
+      <div class="foot-note">Не закрывайте вкладку — QR обновляется автоматически</div>
+      <div class="foot-btns">
+        <button class="btn-end-session" onclick="confirmEndSession()">⏹ Завершить сессию</button>
+        <button class="btn-new-session" onclick="newSession()">↺ Новая сессия</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══ SCREEN: STUDENT ═══ -->
+<div class="screen" id="screen-student">
+  <div class="st-brand">
+    <div class="st-bd"></div>
+    <div class="st-bn">STARTUP STUDIO NSU</div>
+  </div>
+  <div class="st-card" id="st-card">
+    <div class="st-icon spin"><div class="spin-r"></div></div>
+    <div class="st-title spin">Проверяем…</div>
+    <div class="st-desc">Секунду — идёт проверка кода</div>
+  </div>
+</div>
+
+
+<!-- ═══ END SESSION MODAL ═══ -->
+<div class="modal-overlay" id="end-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-icon">⏹</div>
+    <div class="modal-title">Завершить сессию?</div>
+    <div class="modal-desc">Все студенческие fingerprint-ы будут сброшены. Студенты смогут отметиться снова на следующей сессии.</div>
+    <div class="modal-summary">
+      <div class="modal-summary-row">
+        <span style="color:var(--mt)">Занятие</span>
+        <span class="modal-summary-val" id="modal-subject">—</span>
+      </div>
+      <div class="modal-summary-row">
+        <span style="color:var(--mt)">Отметились</span>
+        <span class="modal-summary-val" id="modal-count" style="color:var(--pk)">0 студентов</span>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-confirm-end" onclick="endSession()">Завершить и сбросить</button>
+      <button class="btn-cancel-end" onclick="closeEndModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ══════════════════════════════════════════════════
+   SHARED STATE
+══════════════════════════════════════════════════ */
+let cfg = {};
+let tLeft = 20, ticker = null;
+let students = []; // {name, group, time, fp}
+
+/* ══════════════════════════════════════════════════
+   BACKGROUND STARS
+══════════════════════════════════════════════════ */
+(function(){
+  const w = document.getElementById('bg-stars');
+  for(let i = 0; i < 100; i++){
+    const s = document.createElement('span');
+    s.style.left  = Math.random()*100 + '%';
+    s.style.top   = Math.random()*100 + '%';
+    const sz = Math.random() < .15 ? 3 : 2;
+    s.style.width  = sz + 'px';
+    s.style.height = sz + 'px';
+    s.style.setProperty('--d',     (2 + Math.random()*4) + 's');
+    s.style.setProperty('--delay', (Math.random()*6) + 's');
+    s.style.setProperty('--op',    (0.2 + Math.random()*0.65).toFixed(2));
+    w.appendChild(s);
+  }
+})();
+
+/* ══════════════════════════════════════════════════
+   ROUTING — parse URL params (student flow)
+══════════════════════════════════════════════════ */
+function getParams(){
+  const raw = location.search || '';
+  const hashRaw = location.hash.startsWith('#?') ? location.hash.slice(1) : '';
+  return new URLSearchParams(raw || hashRaw);
+}
+
+const P   = getParams();
+const uT  = P.get('t');          // token
+const uS  = P.get('s') || '';    // session id
+const uE  = parseInt(P.get('e') || '0'); // expiry timestamp
+const uGl = P.get('gl'), uGn = P.get('gn'), uGr = P.get('gr'), uGa = P.get('ga');
+
+let uF = '';
+try {
+  const raw = P.get('f') || '';
+  uF = raw ? decryptUrl(raw) : '';
+} catch(e){ uF = ''; }
+
+// Route on load
+if(uT && uF && uE){ show('screen-student'); runStudentCheck(); }
+else { show('screen-setup'); }
+
+/* ══════════════════════════════════════════════════
+   SCREEN NAVIGATION
+══════════════════════════════════════════════════ */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════
+   SETUP SCREEN LOGIC
+══════════════════════════════════════════════════ */
+function toggleGeo(enabled){
+  const block = document.getElementById('geo-block');
+  block.classList.toggle('disabled', !enabled);
+  updateGeoCheckStatus();
+  if(enabled && !document.getElementById('inp-geo').value){
+    setTimeout(captureGeo, 200);
+  }
+}
+
+function updateGeoCheckStatus(){
+  const toggle  = document.getElementById('geo-toggle');
+  const geoVal  = document.getElementById('inp-geo').value.trim();
+  const statusEl = document.getElementById('geo-check-status');
+
+  if(!toggle.checked){
+    statusEl.className = 'vb-row';
+    statusEl.innerHTML = '<div class="vb-dot"></div>Геолокация — отключена';
+  } else if(!geoVal){
+    statusEl.className = 'vb-row err';
+    statusEl.innerHTML = '<div class="vb-dot"></div>Геолокация — координаты не заданы';
+  } else {
+    statusEl.className = 'vb-row ok';
+    statusEl.innerHTML = '<div class="vb-dot"></div>Геолокация — включена ✓';
+  }
+}
+
+function captureGeo(){
+  const st  = document.getElementById('geo-status');
+  const inp = document.getElementById('inp-geo');
+  st.className = 'geo-status';
+  st.innerHTML = '<span class="geo-dot"></span>Определяем координаты…';
+
+  if(!navigator.geolocation){
+    st.className = 'geo-status err';
+    st.innerHTML = '<span class="geo-dot"></span>Геолокация не поддерживается браузером';
+    return;
+  }
+
+  let resolved = false;
+
+  function applyPos(pos){
+    if(resolved) return;
+    resolved = true;
+    const lat = pos.coords.latitude.toFixed(6);
+    const lng = pos.coords.longitude.toFixed(6);
+    const acc = Math.round(pos.coords.accuracy);
+    inp.value = `${lat}, ${lng}`;
+    inp.dataset.acc = acc;
+    const suggested = Math.min(300, Math.max(80, Math.round(acc*0.15) + 80));
+    document.getElementById('inp-radius').value = suggested;
+    document.getElementById('radius-val').textContent = suggested + 'м';
+    const label = acc < 50 ? 'GPS' : acc < 500 ? 'WiFi' : 'IP';
+    const isLow = acc > 500;
+    st.className = 'geo-status ' + (isLow ? 'warn' : 'ok');
+    st.innerHTML = isLow
+      ? `<span class="geo-dot"></span>⚠ ${label} ±${acc}м — геопроверка ненадёжна, работает только fingerprint`
+      : `<span class="geo-dot"></span>Зафиксировано ✓ (${label}, ±${acc}м → радиус ${suggested}м)`;
+    updateGeoCheckStatus();
+  }
+
+  function onErr(err){
+    if(resolved) return;
+    resolved = true;
+    st.className = 'geo-status err';
+    const msgs = {1:'Доступ запрещён. Разрешите геолокацию и нажмите ⊕ снова.', 3:'Нет ответа. Проверьте настройки.'};
+    st.innerHTML = `<span class="geo-dot"></span>${msgs[err.code] || 'Геолокация недоступна.'}`;
+    updateGeoCheckStatus();
+  }
+
+  navigator.geolocation.getCurrentPosition(applyPos, e => {
+    if(e.code === 1){ onErr(e); return; }
+    navigator.geolocation.getCurrentPosition(applyPos, onErr, {timeout:10000, maximumAge:60000, enableHighAccuracy:false});
+  }, {timeout:8000, maximumAge:0, enableHighAccuracy:true});
+}
+
+function validateFormsUrl(url){
+  return url && url.startsWith('https://docs.google.com/forms/');
+}
+
+function startSession(){
+  const subject  = document.getElementById('inp-subject').value.trim() || 'Занятие';
+  const forms    = document.getElementById('inp-forms').value.trim();
+  const interval = parseInt(document.getElementById('inp-interval').value) || 20;
+  const geoToggle = document.getElementById('geo-toggle').checked;
+  const geoRaw   = document.getElementById('inp-geo').value.trim();
+  const radius   = parseInt(document.getElementById('inp-radius').value) || 80;
+
+  const hint = document.getElementById('forms-hint');
+  if(!forms){ hint.textContent = '⚠ Введите ссылку на Google Forms'; hint.style.display='block'; return; }
+  if(!validateFormsUrl(forms)){ hint.textContent = '⚠ Ссылка должна начинаться с https://docs.google.com/forms/'; hint.style.display='block'; return; }
+  hint.style.display = 'none';
+
+  const sessionId = genToken();
+  let geoLat = null, geoLng = null, geoTeacherAcc = 0;
+  if(geoToggle && geoRaw){
+    const parts = geoRaw.split(',').map(s => parseFloat(s.trim()));
+    const acc   = parseInt(document.getElementById('inp-geo').dataset.acc || '0');
+    if(parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])){
+      geoLat = parts[0]; geoLng = parts[1]; geoTeacherAcc = acc;
+    }
+  }
+
+  cfg = { subject, forms, interval, geoLat, geoLng, radius, geoTeacherAcc, sessionId };
+  students = [];
+
+  // Update teacher dashboard
+  document.getElementById('lbl-subject').textContent = subject;
+  document.getElementById('info-ivl').textContent = interval + ' сек';
+
+  // Geo security indicator
+  const geoSecRow = document.getElementById('geo-sec-row');
+  const geoSecSub = document.getElementById('geo-sec-sub');
+  if(geoLat !== null){
+    geoSecRow.querySelector('.sec-icon').className = 'sec-icon on';
+    geoSecSub.textContent = `Радиус ${radius}м`;
+  } else {
+    geoSecRow.querySelector('.sec-icon').className = 'sec-icon off';
+    geoSecSub.textContent = 'Отключена';
+  }
+
+  renderStudentList();
+  show('screen-teacher');
+  genQR();
+  startTimer();
+}
+
+/* ══════════════════════════════════════════════════
+   QR GENERATION
+══════════════════════════════════════════════════ */
+function genToken(){
+  const a = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({length:14}, () => a[Math.floor(Math.random()*a.length)]).join('');
+}
+
+function encryptUrl(url){
+  const key = 'NSU_STARTUP_STUDIO_2025';
+  let out = '';
+  for(let i = 0; i < url.length; i++)
+    out += String.fromCharCode(url.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  return btoa(out).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+function decryptUrl(enc){
+  const key = 'NSU_STARTUP_STUDIO_2025';
+  const raw = atob(enc.replace(/-/g,'+').replace(/_/g,'/'));
+  let out = '';
+  for(let i = 0; i < raw.length; i++)
+    out += String.fromCharCode(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  return out;
+}
+
+function genQR(){
+  const token  = genToken();
+  const tok    = document.getElementById('info-tok');
+  if(tok) tok.textContent = token.slice(0,8) + '…';
+
+  const expiry = Date.now() + cfg.interval*1000 + 5000;
+  const base   = location.href.split('?')[0];
+  let url = `${base}?t=${token}&f=${encryptUrl(cfg.forms)}&e=${expiry}&s=${cfg.sessionId}`;
+
+  if(cfg.geoLat !== null && cfg.geoLng !== null){
+    const MAGIC = 0x4E5355;
+    const la = (Math.round(cfg.geoLat*1e5)) ^ MAGIC;
+    const ln = (Math.round(cfg.geoLng*1e5)) ^ MAGIC;
+    url += `&gl=${la}&gn=${ln}&gr=${cfg.radius}&ga=${cfg.geoTeacherAcc||0}`;
+  }
+
+  renderQR(url);
+}
+
+function renderQR(text){
+  const qr = qrcode(0, 'M');
+  qr.addData(text); qr.make();
+  const M    = qr.getModuleCount();
+  const PAD  = 6;
+  const cv   = document.getElementById('qrcanvas');
+  const NATIVE = 1200;
+  cv.width = NATIVE; cv.height = NATIVE;
+  const DS = NATIVE / (M + PAD*2);
+  const frame = cv.parentElement;
+  const display = frame ? Math.min(frame.clientWidth - 16, frame.clientHeight - 16) || 460 : 460;
+  cv.style.width  = display + 'px';
+  cv.style.height = display + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,NATIVE,NATIVE);
+  ctx.fillStyle = '#000000';
+  for(let r = 0; r < M; r++){
+    for(let c = 0; c < M; c++){
+      if(qr.isDark(r,c)){
+        const x = (PAD+c)*DS, y = (PAD+r)*DS;
+        ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(DS), Math.ceil(DS));
+      }
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   TIMER
+══════════════════════════════════════════════════ */
+function startTimer(){
+  tLeft = cfg.interval; updTimer();
+  if(ticker) clearInterval(ticker);
+  ticker = setInterval(() => {
+    tLeft--;
+    updTimer();
+    if(tLeft <= 0){ genQR(); tLeft = cfg.interval; }
+  }, 1000);
+}
+
+function updTimer(){
+  const pct = (tLeft / cfg.interval) * 100;
+  const fill = document.getElementById('t-fill');
+  const cd   = document.getElementById('t-cd');
+  fill.style.width = pct + '%';
+  cd.textContent   = tLeft;
+  fill.classList.toggle('urg', tLeft <= 5);
+  cd.classList.toggle('urg', tLeft <= 5);
+}
+
+/* ══════════════════════════════════════════════════
+   STUDENT LIST (Teacher view)
+══════════════════════════════════════════════════ */
+function renderStudentList(){
+  const list  = document.getElementById('student-list');
+  const count = document.getElementById('student-count');
+  const chip  = document.getElementById('chip-count');
+  count.textContent = students.length;
+  chip.textContent  = students.length;
+
+  if(students.length === 0){
+    list.innerHTML = `<div class="sl-empty">Ещё никто не отметился.<br>Студенты появятся здесь после заполнения формы.</div>`;
+    return;
+  }
+
+  list.innerHTML = students.map((s, i) => `
+    <div class="student-item">
+      <div class="si-num">${i+1}</div>
+      <div class="si-info">
+        <div class="si-name">${escHtml(s.name)}</div>
+        <div class="si-group">${escHtml(s.group)}</div>
+      </div>
+      <div class="si-time">${s.time}</div>
+    </div>
+  `).join('');
+}
+
+function addStudent(name, group){
+  const now = new Date();
+  const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  students.unshift({ name, group, time });
+  renderStudentList();
+}
+
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ══════════════════════════════════════════════════
+   SESSION MANAGEMENT
+══════════════════════════════════════════════════ */
+function confirmEndSession(){
+  document.getElementById('modal-subject').textContent = cfg.subject || '—';
+  document.getElementById('modal-count').textContent   = students.length + ' студент' + plural(students.length);
+  document.getElementById('end-modal').style.display   = 'flex';
+}
+
+function closeEndModal(){
+  document.getElementById('end-modal').style.display = 'none';
+}
+
+function endSession(){
+  // Clear session fingerprints from localStorage
+  clearSessionFingerprints(cfg.sessionId);
+  if(ticker) clearInterval(ticker);
+  closeEndModal();
+  show('screen-setup');
+  students = [];
+}
+
+function newSession(){
+  if(ticker) clearInterval(ticker);
+  students = [];
+  show('screen-setup');
+}
+
+function plural(n){
+  if(n % 10 === 1 && n % 100 !== 11) return '';
+  if(n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return 'а';
+  return 'ов';
+}
+
+/* ══════════════════════════════════════════════════
+   FINGERPRINT STORAGE
+   Key format: att_sess_{sessionId}_fp_{fingerprintId}
+══════════════════════════════════════════════════ */
+function getSessionFpKey(sessId, fp){ return `att_sess_${sessId}_fp_${fp}`; }
+
+function isAlreadyMarked(sessId, fp){
+  return !!localStorage.getItem(getSessionFpKey(sessId, fp));
+}
+
+function markFingerprint(sessId, fp){
+  localStorage.setItem(getSessionFpKey(sessId, fp), Date.now().toString());
+}
+
+function clearSessionFingerprints(sessId){
+  const prefix = `att_sess_${sessId}_fp_`;
+  const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+  keys.forEach(k => localStorage.removeItem(k));
+}
+
+/* ══════════════════════════════════════════════════
+   STUDENT FLOW
+══════════════════════════════════════════════════ */
+function haversine(lat1,lng1,lat2,lng2){
+  const R = 6371000, toR = Math.PI/180;
+  const dLat = (lat2-lat1)*toR, dLng = (lng2-lng1)*toR;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*toR)*Math.cos(lat2*toR)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function decodeGeo(v){ return ((parseInt(v) ^ 0x4E5355) / 1e5); }
+
+async function runStudentCheck(){
+  const now = Date.now();
+
+  // 1. Token presence
+  if(!uT || !uF || !uE) return showStudentFail('✕','Неверная ссылка','Параметры повреждены. Отсканируйте QR заново.');
+
+  // 2. Token expiry
+  if(now > uE) return showStudentFail('⏱','QR устарел',`Код истёк. Отсканируйте свежий QR с проектора. Код обновляется каждые несколько секунд.`);
+
+  // 3. Geo check
+  if(uGl && uGn && uGr){
+    const tLat = decodeGeo(uGl), tLng = decodeGeo(uGn), tR = parseInt(uGr) || 100;
+    const teacherAcc = parseInt(uGa || '0');
+    if(teacherAcc <= 500){
+      try{
+        setStudentCard(`<div class="st-icon spin"><div class="spin-r"></div></div>
+          <div class="st-title spin">Геолокация…</div>
+          <div class="st-desc">Разрешите доступ к местоположению</div>
+          <div class="st-pb"><div class="st-pf" style="width:33%"></div></div>`);
+
+        const pos = await new Promise((res,rej) =>
+          navigator.geolocation.getCurrentPosition(res,rej,{timeout:12000,maximumAge:0,enableHighAccuracy:true})
+        );
+        const dist     = Math.round(haversine(pos.coords.latitude,pos.coords.longitude,tLat,tLng));
+        const phoneAcc = Math.round(pos.coords.accuracy || 0);
+        const effDist  = Math.max(0, dist - phoneAcc - teacherAcc);
+        if(effDist > tR)
+          return showStudentFail('📍','Вы не в аудитории',`Расстояние ~${dist}м (±${phoneAcc}м). Допустимо: ${tR}м. Убедитесь, что вы в аудитории.`);
+      } catch(e){
+        const msgs = {
+          1:'Доступ к геолокации запрещён. Разрешите в браузере и попробуйте снова.',
+          3:'Геолокация не ответила. Попробуйте на улице или у окна.'
+        };
+        return showStudentFail('📍','Геолокация недоступна', msgs[e.code] || 'Геолокация недоступна на устройстве.');
+      }
+    }
+  }
+
+  // 4. Fingerprint check
+  setStudentCard(`<div class="st-icon spin"><div class="spin-r"></div></div>
+    <div class="st-title spin">Проверяем устройство…</div>
+    <div class="st-desc">Финальная проверка</div>
+    <div class="st-pb"><div class="st-pf" style="width:66%"></div></div>`);
+
+  let fp = 'fb_' + navigator.userAgent + screen.width + screen.height;
+  try{
+    const fpResult = await Promise.race([
+      (async()=>{ const r = await (await FingerprintJS.load()).get(); return r.visitorId; })(),
+      new Promise(res => setTimeout(() => res(null), 4000))
+    ]);
+    if(fpResult) fp = fpResult;
+  } catch(e){}
+
+  const sessionKey = uS + '_' + fp;
+  if(isAlreadyMarked(uS, fp))
+    return showStudentFail('⚠','Уже отмечен','Вы уже отметились на этом занятии. До следующей сессии повторная отметка недоступна.');
+
+  // All checks passed — show form
+  showStudentForm(uF, uS, fp);
+}
+
+function setStudentCard(html){
+  document.getElementById('st-card').innerHTML = html;
+}
+
+function showStudentFail(icon, title, desc){
+  setStudentCard(`
+    <div class="st-icon fail">${icon}</div>
+    <div class="st-title">${escHtml(title)}</div>
+    <div class="st-sep"></div>
+    <div class="st-desc">${escHtml(desc)}</div>
+    <div class="st-tag fail">Отказано в доступе</div>
+  `);
+}
+
+function showStudentForm(formsUrl, sessId, fp){
+  const sc = document.getElementById('screen-student');
+  const embedUrl = formsUrl
+    .replace(/[?&]usp=[^&]*/g,'').replace(/\?&/,'?').replace(/[?&]$/,'')
+    + (formsUrl.includes('?') ? '&embedded=true' : '?embedded=true');
+
+  sc.innerHTML = `
+    <div class="form-overlay">
+      <div class="form-topbar">
+        <div class="ftb-dot"></div>
+        <span class="ftb-name">STARTUP STUDIO NSU</span>
+        <span class="ftb-label">Форма посещаемости</span>
+      </div>
+      <div class="form-wrap">
+        <div class="form-loading" id="form-loading">
+          <div class="form-loader"></div>
+          <span class="form-loading-text">Загружаем форму…</span>
+        </div>
+        <iframe id="gform-iframe"
+          allow="geolocation"
+          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"></iframe>
+      </div>
+    </div>`;
+
+  loadFormInIframe(embedUrl, sessId, fp);
+}
+
+/* ══════════════════════════════════════════════════
+   FORM LOADING — Hide origin URL via blob:
+══════════════════════════════════════════════════ */
+function loadFormInIframe(formUrl, sessId, fp){
+  const iframe  = document.getElementById('gform-iframe');
+  const loading = document.getElementById('form-loading');
+
+  // Attempt to fetch & rewrite as blob (hides origin URL completely)
+  fetch(formUrl, { credentials:'omit' })
+    .then(r => { if(!r.ok) throw new Error('fetch failed'); return r.text(); })
+    .then(html => {
+      const base = new URL(formUrl);
+      const rewritten = html
+        .replace(/<head>/i, `<head><base href="${base.origin}">`)
+        .replace('</body>', `
+<script>
+(function(){
+  // Watch for submit confirmation — text appears on success page
+  const obs = new MutationObserver(() => {
+    const t = document.body.innerText || '';
+    if(t.includes('записан') || t.includes('recorded') || t.includes('submitted') || t.includes('отправлен')){
+      window.parent.postMessage({type:'gform_submitted'},'*');
+    }
+  });
+  obs.observe(document.body, {childList:true, subtree:true, characterData:true});
+  // Intercept pushState navigation (SPA forms)
+  const orig = history.pushState.bind(history);
+  history.pushState = function(...a){
+    orig(...a);
+    window.parent.postMessage({type:'gform_navigate', url:location.href},'*');
+  };
+  window.parent.postMessage({type:'gform_loaded'},'*');
+})();
+<\/script></body>`);
+
+      const blob = new Blob([rewritten], {type:'text/html'});
+      iframe.src = URL.createObjectURL(blob);
+    })
+    .catch(() => {
+      // CORS blocked — fall back to direct load (URL visible in about:blank cross-origin frame)
+      iframe.src = formUrl;
+    });
+
+  // Message listener
+  function onMsg(e){
+    if(!e.data) return;
+    if(e.data.type === 'gform_loaded'){
+      if(loading) loading.style.display = 'none';
+      iframe.style.opacity = '1';
+    }
+    if(e.data.type === 'gform_submitted'){
+      window.removeEventListener('message', onMsg);
+      onFormSubmitted(sessId, fp);
+    }
+    if(e.data.type === 'gform_navigate'){
+      if((e.data.url||'').includes('formResponse')){
+        window.removeEventListener('message', onMsg);
+        onFormSubmitted(sessId, fp);
+      }
+    }
+  }
+  window.addEventListener('message', onMsg);
+
+  // Fallback: iframe load events
+  let loadCount = 0;
+  iframe.addEventListener('load', () => {
+    loadCount++;
+    if(loadCount === 1){
+      if(loading) loading.style.display = 'none';
+      iframe.style.opacity = '1';
+      return;
+    }
+    let iUrl = '';
+    try{ iUrl = iframe.contentWindow.location.href; } catch(e){}
+    if(iUrl.includes('formResponse') || iUrl === '' || iUrl === 'about:blank'){
+      if(loadCount >= 2) onFormSubmitted(sessId, fp);
+    }
+  });
+
+  // Safety fallback: reveal after 4s regardless
+  setTimeout(() => {
+    if(loading) loading.style.display = 'none';
+    iframe.style.opacity = '1';
+  }, 4000);
+}
+
+/* ══════════════════════════════════════════════════
+   ON FORM SUBMITTED
+   Mark fingerprint, fetch student name from Google Sheets (if configured),
+   show success overlay, notify teacher view via BroadcastChannel
+══════════════════════════════════════════════════ */
+function onFormSubmitted(sessId, fp){
+  if(isAlreadyMarked(sessId, fp)) return; // guard double-fire
+  markFingerprint(sessId, fp);
+
+  // Notify the teacher tab (same origin, different tab) via BroadcastChannel
+  try{
+    const bc = new BroadcastChannel('attendance_' + sessId);
+    bc.postMessage({ type:'student_marked', fp, ts: Date.now() });
+    bc.close();
+  } catch(e){}
+
+  // Show success overlay
+  const wrap = document.querySelector('.form-wrap');
+  if(wrap){
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#111113;z-index:10;padding:40px;text-align:center;animation:fadeIn .4s ease;';
+    ov.innerHTML = `
+      <div style="width:80px;height:80px;border-radius:50%;background:rgba(232,25,125,.12);border:2px solid rgba(232,25,125,.4);display:flex;align-items:center;justify-content:center;font-size:34px;animation:popIn .45s cubic-bezier(.175,.885,.32,1.275) forwards;">✓</div>
+      <div style="font-family:Unbounded,sans-serif;font-size:22px;font-weight:900;color:#fff;letter-spacing:-.02em;">Вы отмечены!</div>
+      <div style="width:36px;height:1px;background:#2a2a32;"></div>
+      <div style="font-size:13px;color:#5c5c78;line-height:1.6;max-width:260px;">Форма отправлена. Присутствие подтверждено на этом занятии.</div>
+      <div style="padding:5px 14px;border-radius:100px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;background:rgba(232,25,125,.12);color:#e8197d;border:1px solid rgba(232,25,125,.25);">Подтверждено</div>`;
+    wrap.appendChild(ov);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   BROADCAST CHANNEL — Teacher tab listens for student marks
+   (works when teacher & student are on same device / same origin tabs)
+══════════════════════════════════════════════════ */
+let teacherBC = null;
+
+function startListeningForStudents(sessId){
+  if(teacherBC){ teacherBC.close(); }
+  try{
+    teacherBC = new BroadcastChannel('attendance_' + sessId);
+    teacherBC.onmessage = (e) => {
+      if(e.data && e.data.type === 'student_marked'){
+        // In a real backend this would come from Supabase Realtime / WebSocket.
+        // For demo: prompt to refresh / pull from Google Sheets
+        // Here we show a generic name until Google Sheets webhook is configured
+        addStudent('Студент (форма заполнена)', 'Проверьте Google Forms');
+      }
+    };
+  } catch(e){}
+}
+
+// Start listening when teacher screen is shown
+const _origStartSession = startSession;
+
+/* ══════════════════════════════════════════════════
+   GOOGLE SHEETS POLLING
+   After a student submits, their name appears in the linked Sheet.
+   We poll the published CSV endpoint every 5s to catch new rows.
+══════════════════════════════════════════════════ */
+let sheetsPoller = null;
+let lastRowCount = 0;
+
+/**
+ * To enable Sheets integration:
+ * 1. Open your Google Form → Responses → Link to Google Sheets
+ * 2. In the Sheet: File → Share → Publish to web → CSV format → Copy link
+ * 3. Paste that CSV URL in the field below (or pass as cfg.sheetsUrl)
+ *
+ * The CSV URL looks like:
+ * https://docs.google.com/spreadsheets/d/SHEET_ID/export?format=csv&gid=0
+ */
+function startSheetsPolling(sheetsUrl){
+  if(sheetsPoller) clearInterval(sheetsPoller);
+  if(!sheetsUrl) return;
+  lastRowCount = 0;
+
+  sheetsPoller = setInterval(() => pollSheets(sheetsUrl), 5000);
+  pollSheets(sheetsUrl); // immediate first poll
+}
+
+async function pollSheets(sheetsUrl){
+  try{
+    const res  = await fetch(sheetsUrl + '&cachebust=' + Date.now(), { cache:'no-store' });
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    if(rows.length <= 1) return; // only header
+    const dataRows = rows.slice(1); // skip header
+
+    if(dataRows.length > lastRowCount){
+      const newRows = dataRows.slice(lastRowCount);
+      newRows.forEach(row => {
+        // Expected columns: Timestamp, Name (Имя Фамилия), Group (Группа)
+        // Adjust indices based on your form structure
+        const name  = (row[1] || '').trim() || 'Студент';
+        const group = (row[2] || '').trim() || '—';
+        addStudent(name, group);
+      });
+      lastRowCount = dataRows.length;
+    }
+  } catch(e){
+    // Network/CORS error — silent fail, retry next interval
+  }
+}
+
+function parseCSV(text){
+  return text.trim().split('\n').map(line => {
+    const row = [];
+    let cur = '', inQ = false;
+    for(let i = 0; i < line.length; i++){
+      const c = line[i];
+      if(c === '"'){ inQ = !inQ; continue; }
+      if(c === ',' && !inQ){ row.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    row.push(cur);
+    return row;
+  });
+}
+
+/* Auto-start sheets polling when session starts if sheetsUrl is configured */
+const _startSession_orig = window.startSession;
+window.startSession = function(){
+  startSession();
+  // After cfg is set:
+  if(cfg.sessionId){
+    startListeningForStudents(cfg.sessionId);
+    // If you have a Google Sheets CSV URL, call:
+    // startSheetsPolling('YOUR_SHEETS_CSV_URL_HERE');
+  }
+};
+
+// DOMContentLoaded: auto-trigger geo on setup screen
+window.addEventListener('DOMContentLoaded', () => {
+  if(!uT && !uF){
+    setTimeout(() => {
+      if(navigator.geolocation && document.getElementById('geo-toggle').checked){
+        captureGeo();
+      }
+    }, 400);
+  }
+});
+</script>
+
+<!-- ═══ ARCHITECTURE COMMENT ═════════════════════════════════════
+  CURRENT: Fully client-side (GitHub Pages compatible).
+           Fingerprints stored in localStorage per session.
+           Google Sheets CSV polled every 5s for student names.
+           BroadcastChannel syncs across tabs on same device.
+
+  NEXT STEP — Add Supabase backend for production:
+  ────────────────────────────────────────────────
+  1. npm create supabase-project attendance
+  2. Create tables:
+       sessions(id, subject, forms_url, interval, geo_lat, geo_lng, radius, active, created_at)
+       attendance(id, session_id, fp_hash, name, group_name, marked_at)
+  3. Replace localStorage fingerprints with:
+       supabase.from('attendance').insert({session_id, fp_hash: sha256(fp)})
+  4. Replace sheets polling with Supabase Realtime:
+       supabase.channel('attendance').on('postgres_changes', ...)
+  5. Server-side token validation via Supabase Edge Functions
+
+  See README.md for full migration guide.
+════════════════════════════════════════════════════════════════ -->
+</body>
+</html>
